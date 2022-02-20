@@ -28,24 +28,62 @@ namespace CGL {
 
   Color Texture::sample_nearest(Vector2D uv, int level) {
     // TODO: Task 5: Fill this in.
-    auto& mip = mipmap[level];
-
-
-
-
+    auto& mip = mipmap[level]; //texture image ?
+//      int uvsize_x = sizeof(uv.x);
+//      int uvsize_y = sizeof(uv.y);
+//      int mipsize_x = mip.width;
+//      int mipsize_y = mip.height;
+//      for (int x = 0; x < uvsize_x;x++){
+//          for(int y = 0; y < uvsize_y; y++){
+//              int mip_x = (int)(x * (uvsize_x/mipsize_x));
+//              int mip_y = (int)(y * (uvsize_y/mipsize_y));
+//              Color col = mip.get_texel(mip_x, mip_y);
+//              uv
+//          }
+//      }
     // return magenta for invalid level
-    return Color(1, 0, 1);
+//    return Color(1, 0, 1);
+      
+      if (round(uv.x) < 0 || round(uv.x) >= mip.width) return;
+      if (round(uv.y) < 0 || round(uv.y) >= mip.height) return;
+      Color col = mip.get_texel(round(uv.x), round(uv.y));
+      return col;
   }
+
+    float lerp(float a, float b, float t)
+    {
+        return a + t * (b - a);
+    }
+ 
 
   Color Texture::sample_bilinear(Vector2D uv, int level) {
     // TODO: Task 5: Fill this in.
     auto& mip = mipmap[level];
-
-
-
-
+      float offset_x = 0.5;
+      float offset_y = 0.5;
+      double x_ratio = 0.0;
+      double y_ratio = 0.0;
+      if ((uv.x-floor(uv.x)) < 0.5){
+          offset_x = -0.5;
+          x_ratio = abs(uv.x - (floor(uv.x)+offset_x));
+      } else {
+          x_ratio = abs(uv.x - (ceil(uv.x)+offset_x));
+      }
+      if ((uv.y-floor(uv.y)) < 0.5){
+          offset_y = -0.5;
+          y_ratio = abs(uv.y - (floor(uv.y)+offset_y));
+      } else {
+          y_ratio = abs(uv.y - (ceil(uv.y)+offset_y));
+      }
+      
+      Color cols[] = {mip.get_texel(floor(uv.x+offset_x), floor(uv.y+offset_y)), mip.get_texel(floor(uv.x+offset_x), floor(uv.y)),mip.get_texel(ceil(uv.x), floor(uv.y+offset_y)),mip.get_texel(floor(uv.x), floor(uv.y))};
+      Color avg = (cols[0]*(1-x_ratio) + cols[0]*(1-y_ratio) + cols[1]*(1-x_ratio) + cols[1]*(y_ratio) + cols[2]*(x_ratio) + cols[2]*(1-y_ratio) + cols[3]*( x_ratio) + cols[3]*(y_ratio))*0.25;
+//      double x_ratio = uv.x -floor(uv.x);
+//      double y_ratio = uv.y -floor(uv.y);
+//    Color cols[] = {mip.get_texel(floor(uv.x), floor(uv.y)), mip.get_texel(floor(uv.x), ceil(uv.y)),mip.get_texel(ceil(uv.x), floor(uv.y)),mip.get_texel(ceil(uv.x), ceil(uv.y))};
+//      Color avg = (cols[0]*x_ratio + cols[0]*y_ratio + cols[1]*x_ratio + cols[1]*(1- y_ratio) + cols[2]*(1-x_ratio) + cols[2]*y_ratio + cols[3]*(1 - x_ratio) + cols[3]*(1- y_ratio))*0.25;//change
     // return magenta for invalid level
-    return Color(1, 0, 1);
+    return avg;
   }
 
 

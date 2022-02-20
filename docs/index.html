@@ -14,6 +14,15 @@
   h1, h2, h3, h4 {
     font-family: 'Source Sans Pro', sans-serif;
   }
+    b {
+        font-weight: 700;
+        font-family: sans-serif;
+    }
+    span {
+        font-family: monospace;
+        font-weight: 400;
+        font-size: 18px;
+    }
 </style>
 <title>CS 184 Rasterizer</title>
 <meta http-equiv="content-type" content="text/html; charset=utf-8" />
@@ -23,23 +32,34 @@
 
 <body>
 
-<h1 align="middle">CS 184: Computer Graphics and Imaging, Spring 2018</h1>
+<h1 align="middle">CS 184: Computer Graphics and Imaging, Spring 2022</h1>
 <h1 align="middle">Project 1: Rasterizer</h1>
-<h2 align="middle">YOUR NAME, CS184-??</h2>
+<h2 align="middle">Yassin Oulad Daoud, CS184</h2>
 
 <br><br>
 
 <div>
 
 <h2 align="middle">Overview</h2>
-<p>Give a high-level overview of what you implemented in this project. Think about what you've built as a whole. Share your thoughts on what interesting things you've learned from completing the project.</p>
+<p><b>TODO:</b>Give a high-level overview of what you implemented in this project. Think about what you've built as a whole. Share your thoughts on what interesting things you've learned from completing the project.</p>
 
 <h2 align="middle">Section I: Rasterization</h2>
 
 <h3 align="middle">Part 1: Rasterizing single-color triangles</h3>
+    <p>We want to draw (<b>"rasterize"</b>) a triangle, which has an absolute shape, over a frame buffer that contains a set of pixels. We need to change the color of the pixels where the triangle will be to the color of the triangle, but we need to first figure out which pixels to update. We loop over each pixel in the area of the triangle and perform three "line tests" for each edge of the triangle in clockwise or counter-clockwise order to see if the pixel is inside the triangle. The pixel is <em>inside</em> if for every line, the dot product of the normal vector to that line and the vector pointing to the pixel from the first point on the line is less than zero (or greater than zero for counter-clockwise order). If the pixel center is inside the triangle, we set the color to the triangle's color and continue for the rest of the pixels.</p>
+    <p>Rather than checking each pixel in the drawing area, my algorithm first determines the minimum and maximum x- and y- values of each of the triangle's vertices and creates a bounding box accordingly. Then the algorithm only loops over the pixels in this <b>bounding box</b>.</p>
+    <div align="middle">
+        <table style="width=100%">
+            <tr>
+                    <img src="images/s1.png" align="middle" width="400px"/>
+                    <figcaption align="middle">Sample of <b>basic/test4.svg</b> showing non-supersampled rasterization of an acute angle of a triangle.</figcaption>
+            </tr>
+        </table>
+    </div>
 
 <p>Here is an example 2x2 gridlike structure using an HTML table. Each <b>tr</b> is a row and each <b>td</b> is a column in that row. You might find this useful for framing and showing your result images in an organized fashion.</p>
 
+<!--
 <div align="middle">
   <table style="width=100%">
     <tr>
@@ -66,31 +86,97 @@
   </table>
 </div>
 
+-->
 
 <h3 align="middle">Part 2: Antialiasing triangles</h3>
 
+<p>To perform <b>supersampling</b> I used the <span>sample_buffer</span> 1D vector to store the 2D drawing area for rasterization. For a given <span>sample_rate</span>, the size of the drawing area would be <span>width * height * sample_rate</span>, where <span>width</span> and <span>height</span> are the dimensions of the final framebuffer that the GUI displays. To access the subpixels in <span>sample_buffer</span> of a pixel <span>(x, y)</span> in the framebuffer image, I index <span>sample_buffer</span> by <span>x * sqrt(sample_rate) * width + y * sqrt(sample_rate)</span>, which is the first subpixel of the kernel of subpixels of size <span>sqrt(sample_rate) * sqrt(sample_rate)</span> .</p>
+<p>The <b>algorithm</b> involves: (1) initializing the <span>sample_buffer</span> according to the <span>sample_rate</span>; (2) rasterizing each triangle as in Task 1, only this time the bounding box has <span>sample_rate</span> times more pixels to perform the line tests on; (3) rasterizing the lines and points by simply filling each subpixel with the same color so that they look as they did in Task 1; (4) finally "resolving" the rasterized image to the framebuffer by averaging the colors from each set of subpixels in the <span>sample_buffer</span> and setting the corresponding pixel in the framebuffer to the average color (otherwise known as "downsampling").</p>
+<p>The <b>modifications</b> I had to make to the rasterization pipeline in Task 1 were mainly updating <span>rasterize_triangle</span> so that the bounding box of each triangle and the triangle points for the line tests scaled to the new size of the <span>sample_buffer</span>, and changing <span>resolve_to_framebuffer</span> to implement downsampling (before, it simply indexed from <span>sample_buffer</span> is if the framebuffer had the same dimensions). Minor fixes included changing the <span>fill_pixel</span> function to loop over each subpixel in the <span>sample_buffer</span> and set each to the same color in the case of point or line rasterization.</p>
+<p>Before this step, my triangles had lots of "jaggies" and floating points (see the above image) as a result of aliasing. I could <b>antialias</b> my triangles with supersampling, since this process involves breaking down each pixel into <span>sample_rate</span> subpixels and performing the line test over each, which smoothes out some of the coarser "jaggies." Then, by downsampling from the <span>sample_buffer</span> using the average color of the subpixels, the pixels become gradually lighter at the edges of the triangle, resulting in a smooth edge as opposed to floating points:</p>
+    
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="images/s21.png" align="middle" width="300px"/>
+        <figcaption align="middle">sample_rate = 1</figcaption>
+      </td>
+      <td>
+        <img src="images/s22.png" align="middle" width="300px"/>
+        <figcaption align="middle">sample_rate = 4</figcaption>
+      </td>
+      <td>
+        <img src="images/s23.png" align="middle" width="300px"/>
+        <figcaption align="middle">sample_rate = 16</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+<p>In the images above, we can see that in the <span>sample_rate = 1</span> image, there are clear "jaggies" and a large gap followed by floating pixels when we expect a smoother point. This is due to aliasing; there are actually subpixels in that gap that would pass the line test which are being excluded from the final image. As we increase the <span>sample_rate</span> this point is smoothed out thanks to the supersampling following by averaging the subpixels of each pixel. By the rightmost image, the point of the triangle is much smoother.</p>
 
 
 <h3 align="middle">Part 3: Transforms</h3>
-
+<table style="width=100%">
+    <tr>
+      <td>
+        <img src="images/s32.png" align="middle" width="500px"/>
+        <figcaption align="middle">Original pose</figcaption>
+      </td>
+      <td>
+        <img src="images/s31.png" align="middle" width="500px"/>
+        <figcaption align="middle">Pirouette pose</figcaption>
+      </td>
+    </tr></table>
+<p>My cubeman has their hands up in a pirouette pose! I adjusted the rotation of the arm and leg segments and translated each to compensate for the offset caused by rotation. I also scaled the arm length to allow the arms to reach all the way over the head.</p>
 
 
 <h2 align="middle">Section II: Sampling</h2>
 
 <h3 align="middle">Part 4: Barycentric coordinates</h3>
+    <p>Barycentric coordinates are based on the prortion of the distance between a point and a set of points defining a simplex, like a triangle. These proportions can be treated as weights associated with an attribute at each vetex, e.g. a colors or mass. For example, the triangle below uses barycentric coordinates to calculate the color value of each pixel in a triangle based on their distance to each of the red, green and blue vertices. The result is a smooth gradient of color across the triangle:</p>
+    <div align="middle">
+        <table style="width=100%">
+            <tr>
+                    <img src="images/s41.png" align="middle" width="400px"/>
+                    <figcaption align="middle">Red-green-blue color triangle computed with barycentric cooredinates</figcaption>
+            </tr>
+        </table>
+    </div>
+    <div align="middle">
+        <table style="width=100%">
+            <tr>
+                    <img src="images/s42.png" align="middle" width="400px"/>
+                    <figcaption align="middle">Many of these color triangles can be arranged to create a smoothly blended color palette.</figcaption>
+            </tr>
+        </table>
+    </div>
 
 
 <h3 align="middle">Part 5: "Pixel sampling" for texture mapping</h3>
+    <p>Pixel sampling involves computing coordinates <span>u, v</span> in a continuous space  for a point at <span>x, y</span> in the "screen space," and drawing the value from <span>u, v</span> at the point <span>x, y</span>. For texture mapping, we want to perform this operation by mapping a set of pixels ("texels") from triangles in a texture image onto the set of pixels from the corresponding triangles in the screen space. Because the pixels lay in correpsonding triangles, I used <b>barycentric coordinates</b> based on the vertices of the triangles in the screen and texture spaces, to find the texel coordinates <span>u, v</span> corrsponding to the screen pixel at <span>x, y</span>.</p>
+    <p>It is often the case, however, that <span>u, v</span> don't align exactly with coordinates in the texture space. For this reason, we can use one of two sampling methods. <b>Nearest</b> sampling simply takes the texel closest to <span>u, v</span> by rounding those coordinates. <b>Bilinear</b> sampling involves finding the nearest 4 texels surrounding <span>u, v</span> and computing the distances between <span>u, v</span> and the four closest coordinates offset by 0.5 (to get the center of the texels). The distances are used to calculate how much each texel contributes to the final pixel value as a weighted average.</p>
+    <table style="width=100%">
+    <tr>
+      <td>
+        <img src="images/s52.png" align="middle" width="500px"/>
+        <figcaption align="middle">Nearest sampling, sample rate = 1 </figcaption>
+      </td>
+      <td>
+        <img src="images/s51.png" align="middle" width="500px"/>
+        <figcaption align="middle">Bilinear sampling, sample rate = 1</figcaption>
+      </td>
+    </tr></table>
+    <p>The image using bilinear sampling has much smoother transitions and does not contain as many artifacts. This is because nearest sampling simply uses the closest color value it can find for each pixel from the texture image without compensating for the fact that the nearest color value in the texture image does not quite correspond with the true coordinate location sampled. In bilinear sampling, the final color taken from the texture image is adjusted to compensate for this offset, making the resulting image drawn on the screen space much smoother.</p>
 
 
 <h3 align="middle">Part 6: "Level sampling" with mipmaps for texture mapping</h3>
-
-
-
-<h2 align="middle">Section III: Art Competition</h2>
-<p>If you are not participating in the optional art competition, don't worry about this section!</p>
-
-<h3 align="middle">Part 7: Draw something interesting!</h3>
+<p><b>TODO:</b>Explain level sampling in your own words and describe how you implemented it for texture mapping.</p><p><b>TODO:</b>
+You can now adjust your sampling technique by selecting pixel sampling, level sampling, or the number of samples per pixel. Describe the tradeoffs between speed, memory usage, and antialiasing power between the three various techniques.</p><p><b>TODO:</b>
+Using a png file you find yourself, show us four versions of the image, using the combinations of L_ZERO and P_NEAREST, L_ZERO and P_LINEAR, L_NEAREST and P_NEAREST, as well as L_NEAREST and P_LINEAR.</p><p>
+->To use your own png, make a copy of one of the existing svg files in svg/texmap/ (or create your own modelled after one of the provided svg files). Then, near the top of the file, change the texture filename to point to your own png. From there, you can run ./draw and pass in that svg file to render it and then save a screenshot of your results.
+</p><p>->Note: Choose a png that showcases the different sampling effects well. You may also want to zoom in/out, use the pixel inspector, etc. to demonstrate the differences.</p><p><b>TODO:</b>
+Extra credit: If you implemented any extra filtering methods, describe them and show comparisons between your results with the other above methods.</p>
 
 </body>
 </html>
