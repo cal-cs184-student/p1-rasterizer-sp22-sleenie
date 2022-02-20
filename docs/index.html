@@ -170,13 +170,5 @@
     <p>The image using bilinear sampling has much smoother transitions and does not contain as many artifacts. This is because nearest sampling simply uses the closest color value it can find for each pixel from the texture image without compensating for the fact that the nearest color value in the texture image does not quite correspond with the true coordinate location sampled. In bilinear sampling, the final color taken from the texture image is adjusted to compensate for this offset, making the resulting image drawn on the screen space much smoother.</p>
 
 
-<h3 align="middle">Part 6: "Level sampling" with mipmaps for texture mapping</h3>
-<p><b>TODO:</b>Explain level sampling in your own words and describe how you implemented it for texture mapping.</p><p><b>TODO:</b>
-You can now adjust your sampling technique by selecting pixel sampling, level sampling, or the number of samples per pixel. Describe the tradeoffs between speed, memory usage, and antialiasing power between the three various techniques.</p><p><b>TODO:</b>
-Using a png file you find yourself, show us four versions of the image, using the combinations of L_ZERO and P_NEAREST, L_ZERO and P_LINEAR, L_NEAREST and P_NEAREST, as well as L_NEAREST and P_LINEAR.</p><p>
-->To use your own png, make a copy of one of the existing svg files in svg/texmap/ (or create your own modelled after one of the provided svg files). Then, near the top of the file, change the texture filename to point to your own png. From there, you can run ./draw and pass in that svg file to render it and then save a screenshot of your results.
-</p><p>->Note: Choose a png that showcases the different sampling effects well. You may also want to zoom in/out, use the pixel inspector, etc. to demonstrate the differences.</p><p><b>TODO:</b>
-Extra credit: If you implemented any extra filtering methods, describe them and show comparisons between your results with the other above methods.</p>
-
 </body>
 </html>
